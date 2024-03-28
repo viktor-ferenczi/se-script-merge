@@ -120,7 +120,8 @@ public static class Program
         }
 
         var template = File.ReadAllText(templatePath);
-        File.WriteAllText(scriptPath, template.Replace("//> DEBUG_MERGED_SCRIPT", mergedScript));
+        var substituted = template.Replace("//> DEBUG_MERGED_SCRIPT", mergedScript);
+        File.WriteAllText(scriptPath, substituted);
 #endif
     }
 }

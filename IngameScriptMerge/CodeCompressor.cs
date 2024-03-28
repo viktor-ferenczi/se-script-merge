@@ -586,6 +586,11 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
+        if (visited.IsVar)
+        {
+            return visited;
+        }
+
         // Must look up the symbol here, since it is NOT a declaration
         var symbolInfo = semanticModel.GetSymbolInfo(node);
         var symbol = symbolInfo.Symbol;
@@ -616,6 +621,53 @@ public class CodeCompressor : CSharpSyntaxRewriter
 
         return SyntaxFactory
             .IdentifierName(shortenedName)
+            .WithLeadingTrivia(visited.GetLeadingTrivia())
+            .WithTrailingTrivia(visited.GetTrailingTrivia());
+    }
+
+    public override SyntaxNode VisitGenericName(GenericNameSyntax node)
+    {
+        if (base.VisitGenericName(node) is not GenericNameSyntax visited)
+        {
+            return null;
+        }
+
+        if (visited.IsVar)
+        {
+            return visited;
+        }
+
+        // Must look up the symbol here, since it is NOT a declaration
+        var symbolInfo = semanticModel.GetSymbolInfo(node);
+        var symbol = symbolInfo.Symbol;
+        if (symbol == null)
+        {
+            var memberGroup = semanticModel.GetMemberGroup(node);
+            if (memberGroup == null)
+            {
+                return visited;
+            }
+            symbol = memberGroup.FirstOrDefault();
+            if (symbol == null)
+            {
+                return visited;
+            }
+        }
+
+        // Resolve specialized methods to their original, generic definition
+        while (!symbol.IsDefinition)
+        {
+            symbol = symbol.OriginalDefinition;
+        }
+
+        if (!symbolMapping.TryGetValue(symbol, out var shortenedName))
+        {
+            return visited;
+        }
+
+        return SyntaxFactory
+            .GenericName(shortenedName)
+            .WithTypeArgumentList(visited.TypeArgumentList)
             .WithLeadingTrivia(visited.GetLeadingTrivia())
             .WithTrailingTrivia(visited.GetTrailingTrivia());
     }

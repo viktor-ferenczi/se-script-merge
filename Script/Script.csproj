@@ -43,6 +43,7 @@
         <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="ISegment.cs" />
         <Compile Include="ISupport.cs" />
         <Compile Include="Program.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
@@ -54,6 +55,7 @@
     </ItemGroup>
     <ItemGroup>
       <PackageReference Include="SpaceEngineers.ScriptingReferences" Version="1.3.0" />
+      <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
     <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

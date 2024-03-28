@@ -9,7 +9,9 @@ It can also minify the script for release, so it can fit under the 100k characte
 - Install .NET Framework 4.8.1 (if you don't have it)
 - Create .Net Framework 4.8.1 Class Library project
 - Configure the project for C# 6.0 syntax
-- Reference the `SpaceEngineers.ScriptingReferences` NuGet package from the project
+- Reference these NuGet packages from the project:
+  - `SpaceEngineers.ScriptingReferences`
+  - `System.Collections.Immutable` 
 - Use the `Script/Skeleton.cs` file from this repository as a starting point for your script code
 - See the `TODO` comments in the skeleton for more
 - See the **Hints** below

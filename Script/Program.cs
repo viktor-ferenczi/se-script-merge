@@ -70,6 +70,14 @@ namespace Script
             #endregion
 
             support = CustomMethod();
+
+            var segment = new ISegment<IMyTerminalBlock>
+            {
+                Next = Me,
+            };
+
+            ISegment<IMyTerminalBlock> otherSegment = segment;
+            Echo(otherSegment.Next.CustomName);
         }
 
         // ReSharper disable once UnusedMember.Global
