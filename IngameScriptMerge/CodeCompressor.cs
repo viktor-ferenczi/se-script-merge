@@ -160,6 +160,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
+        Declaration declaration = null;
         switch (node.Kind())
         {
             case SyntaxKind.InterfaceDeclaration:
@@ -167,42 +168,85 @@ public class CodeCompressor : CSharpSyntaxRewriter
             case SyntaxKind.StructDeclaration:
             case SyntaxKind.EnumDeclaration:
             case SyntaxKind.TypeParameter:
-                return symbol.Name != "Program" &&
-                       symbol.ContainingNamespace.Name.Length == 0
-                    ? new Declaration(node, symbol)
-                    : null;
+                if (symbol.Name != "Program" &&
+                    symbol.ContainingNamespace.Name.Length == 0)
+                {
+                    declaration = new Declaration(node, symbol);
+                }
+                break;
 
             case SyntaxKind.ConstructorDeclaration:
             case SyntaxKind.DestructorDeclaration:
-                return symbol.ContainingType.Name != "Program"
-                    ? new Declaration(node, symbol)
-                    : null;
+                if (symbol.ContainingType.Name != "Program")
+                {
+                    declaration = new Declaration(node, symbol);
+                }
+                break;
 
             case SyntaxKind.MethodDeclaration:
-                return IsValidMethod((MethodDeclarationSyntax) node, (IMethodSymbol) symbol, out var actualMethodSymbol)
-                    ? new Declaration(node, actualMethodSymbol)
-                    : null;
+                if (IsValidMethod((MethodDeclarationSyntax) node, (IMethodSymbol) symbol, out var actualMethodSymbol))
+                {
+                    declaration = new Declaration(node, actualMethodSymbol);
+                }
+                break;
 
             case SyntaxKind.PropertyDeclaration:
-                return IsValidProperty((PropertyDeclarationSyntax) node, (IPropertySymbol) symbol, out var actualPropertySymbol)
-                    ? new Declaration(node, actualPropertySymbol)
-                    : null;
+                if (IsValidProperty((PropertyDeclarationSyntax) node, (IPropertySymbol) symbol, out var actualPropertySymbol))
+                {
+                    declaration = new Declaration(node, actualPropertySymbol);
+                }
+                break;
 
             case SyntaxKind.FieldDeclaration:
             case SyntaxKind.EnumMemberDeclaration:
-                return symbol.ContainingType == null ||
-                       symbol.ContainingType.ContainingAssembly.Name == "Program"
-                    ? new Declaration(node, symbol)
-                    : null;
+                if (symbol.ContainingType == null ||
+                    symbol.ContainingType.ContainingAssembly.Name == "Program")
+                {
+                    declaration = new Declaration(node, symbol);
+                }
+                break;
 
             case SyntaxKind.Parameter:
             case SyntaxKind.VariableDeclarator:
             case SyntaxKind.ForEachStatement:
-                return new Declaration(node, symbol);
-
-            default:
-                return null;
+                declaration = new Declaration(node, symbol);
+                break;
         }
+
+        if (declaration == null)
+        {
+            return null;
+        }
+
+        if (IsExcludedDeclaration(declaration))
+        {
+            return null;
+        }
+
+        return declaration;
+    }
+
+    private bool IsExcludedDeclaration(Declaration declaration)
+    {
+        var start = declaration.Node.SpanStart;
+        if (start < 0 || start >= fullText.Length)
+        {
+            return false;
+        }
+
+        var newLine = fullText.IndexOf('\n', start);
+        if (newLine <= start)
+        {
+            return false;
+        }
+
+        var line = fullText.Substring(start, newLine - start);
+        if (!line.Contains("//!"))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private bool IsValidMethod(MethodDeclarationSyntax node, IMethodSymbol symbol, out IMethodSymbol actualSymbol)
