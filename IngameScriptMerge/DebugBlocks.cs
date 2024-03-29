@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace IngameScriptMerge;
@@ -28,6 +29,19 @@ public static class DebugBlocks
                 case "#if !DEBUG":
                     stack.Push(releaseMode ? IfDirective.Keep : IfDirective.Remove);
                     continue;
+
+                case "#else":
+                    if (stack.Any())
+                    {
+                        stack.Push(stack.Pop() switch
+                        {
+                            IfDirective.Keep => IfDirective.Remove,
+                            IfDirective.Remove => IfDirective.Keep,
+                            IfDirective.Unrelated => IfDirective.Unrelated,
+                            _ => throw new ArgumentOutOfRangeException()
+                        });
+                    }
+                    break;
 
                 case "#endif":
                     if (stack.Any() && stack.Pop() != IfDirective.Unrelated)

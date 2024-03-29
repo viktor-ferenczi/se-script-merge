@@ -28,6 +28,8 @@ public class WhitespaceRemover() : CSharpSyntaxRewriter(true)
     {
         var visited = base.VisitToken(token).WithoutTrivia();
 
+        visited = CopyIfElseEndDirectives(token, visited);
+
         var fullString = visited.ToFullString();
         if (fullString.Length == 0)
         {
@@ -36,10 +38,44 @@ public class WhitespaceRemover() : CSharpSyntaxRewriter(true)
 
         if (requiresWhitespace && fullString[0].RequiresWhitespace())
         {
-            visited = visited.WithLeadingTrivia(SyntaxFactory.Whitespace(" "));
+            visited = visited.WithLeadingTrivia(visited.LeadingTrivia.Insert(0, SyntaxFactory.Whitespace(" ")));
         }
 
         requiresWhitespace = fullString[fullString.Length - 1].RequiresWhitespace();
+
+        return visited;
+    }
+
+    private static SyntaxToken CopyIfElseEndDirectives(SyntaxToken token, SyntaxToken visited)
+    {
+        foreach (var trivia in token.LeadingTrivia)
+        {
+            switch (trivia.Kind())
+            {
+                case SyntaxKind.IfDirectiveTrivia:
+                case SyntaxKind.ElseDirectiveTrivia:
+                case SyntaxKind.EndIfDirectiveTrivia:
+                    visited = visited.WithLeadingTrivia(visited.LeadingTrivia.Add(trivia));
+                    break;
+            }
+        }
+
+        if (visited.HasLeadingTrivia)
+        {
+            visited = visited.WithLeadingTrivia(visited.LeadingTrivia.Insert(0, SyntaxFactory.EndOfLine("\n")));
+        }
+
+        foreach (var trivia in token.TrailingTrivia)
+        {
+            switch (trivia.Kind())
+            {
+                case SyntaxKind.IfDirectiveTrivia:
+                case SyntaxKind.ElseDirectiveTrivia:
+                case SyntaxKind.EndIfDirectiveTrivia:
+                    visited = visited.WithTrailingTrivia(visited.LeadingTrivia.Add(trivia));
+                    break;
+            }
+        }
 
         return visited;
     }

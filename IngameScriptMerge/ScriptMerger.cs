@@ -17,13 +17,14 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
         var workspace = MSBuildWorkspace.Create();
         var solution = await workspace.OpenSolutionAsync(solutionPath);
 
+        // Sort documents by path for repeatable execution
         var documents = solution.Projects
             .SelectMany(project => project.Documents)
             .ToList();
-
         documents.Sort((a, b) => String.Compare(a.FilePath, b.FilePath, StringComparison.Ordinal));
 
-        var nodes = documents
+        // Relevant namespaces from the original code (keep document order)
+        var namespaces = documents
             .AsParallel()
             .AsOrdered()
 #if DEBUG
@@ -41,54 +42,72 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
                         namespaceNames.Contains(child.TryGetInferredMemberName()))))
             .ToList();
 
-        nodes.Sort(CompareNamespaceDeclarations);
+        // Move any namespaces excluded from minification to the top (header, configuration)
+        namespaces.Sort(CompareNamespaceDeclarations);
+        namespaces.DebugDump("original");
 
-        var compiledScript = new CompiledScript(nodes);
+        // Compile the script with standard using statements
+        var compiledScript = new CompiledScript(namespaces);
         var root = await compiledScript.SyntaxTree.GetRootAsync();
-        root.DebugDump("original");
+        root.DebugDump("compiled");
 
+        // TODO: Add PB API whitelist check
+
+        // Shorten type and variable names in the script based on type information
         if (shortenNames)
         {
             root = new CodeCompressor(compiledScript, aggressiveCompression).Visit(root);
             root.DebugDump("shortened");
         }
 
-        nodes = root
+        // Collect the namespaces containing the rewritten code (do not unpack them here)
+        namespaces = root
             .ChildNodes()
-            .AsParallel()
-            .AsOrdered()
-#if DEBUG
-            .WithDegreeOfParallelism(1)
-#endif
-            .Select(ns => minifyWhitespace ? new WhitespaceRemover().Process(ns) : ns)
-            .SelectMany(ns => ns.ChildNodes().Skip(1))
             .SkipWhile(child => child.IsKind(SyntaxKind.UsingDirective))
             .ToList();
-        nodes.DebugDump("minified");
+        root.DebugDump("non-minified");
 
-        nodes = nodes
-            .SelectMany(new ProgramClassRemover().Process)
-            .Where(node => node != null)
-            .ToList();
-        root.DebugDump("unpacked");
+        // Remove unnecessary whitespace (keep order)
+        if (minifyWhitespace)
+        {
+            namespaces = namespaces
+                .AsParallel()
+                .AsOrdered()
+#if DEBUG
+                .WithDegreeOfParallelism(1)
+#endif
+                // Must use separate WhitespaceRemover instances due to parallelism
+                .Select(ns => new WhitespaceRemover().Process(ns))
+                .ToList();
+            namespaces.DebugDump("minified");
+        }
 
-        var script = string.Join("\n", nodes
+        // Unpack code from namespaces, remove the Program class, post-process code, join all code
+        var script = string.Join("\n", namespaces
             .AsParallel()
             .AsOrdered()
 #if DEBUG
             .WithDegreeOfParallelism(1)
 #endif
-            .Select(node => PostprocessCodeBlock(node.ToFullString())));
+            .SelectMany(ns => ns
+                // Skip the IdentifierName of the namespace, process the nodes inside the namespace
+                .ChildNodes().Skip(1)
+                // Must use separate ProgramClassRemover instances due to parallelism
+                .SelectMany(new ProgramClassRemover().Process)
+                .Where(node => node != null)
+                .Select(node => PostprocessCodeBlock(node.ToFullString())))
+        );
 
         return script;
     }
 
-    private static string PostprocessCodeBlock(string text)
+    private string PostprocessCodeBlock(string text)
     {
         return string.Join("\n", text
             .Replace("\r\n", "\n")
             .IterSplit('\n')
             .Where(line => line.Trim() != "//!!")
+            .FilterLines(releaseMode)
             .ToList()
             .RemoveCommonIndentation());
     }
