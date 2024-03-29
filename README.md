@@ -67,9 +67,9 @@ The deployment target is SE's script folder: `%AppData%\SpaceEngineers\IngameScr
 
 ### Header
 
-Adding `//!!` anywhere in a namespace declaration will move it to the top of the merged
-script and exluces its contents from variable renaming and minification. This is useful
-to add documentation and configuration supposed to be editable by the player. 
+Adding `//!!` anywhere in a namespace declaration will move that namespace block to the
+top of the merged script and exludes it from variable renaming and minification.
+This is useful to add documentation and configuration supposed to be editable by the player. 
 
 ```cs
 namespace Script {
