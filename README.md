@@ -58,7 +58,29 @@ The deployment target is SE's script folder: `%AppData%\SpaceEngineers\IngameScr
 - Add your unit tests (if any) into a separate namespace (for example `Tests`)
 - Make sure to wrap all debug code into `#if DEBUG` directives
 - Subdirectories are allowed, use `/` as a delimiter, or example: `My Subdir/Name Of My Script`
-- Exclude names from the shortening, useful for configuration variables: `//! KeepThisName` 
+
+### Excluding names from shortening
+
+- Specific names (everywhere): `//! KeepThisName, KeepThatName`
+- On the line of declaration: `const string DontRenameThis = "x"; //!`
+- Enum values, sometimes they are shown to the player: `KeepThisEnumValue, //!`
+
+### Header
+
+Adding `//!!` anywhere in a namespace declaration will move it to the top of the merged
+script and exluces its contents from variable renaming and minification. This is useful
+to add documentation and configuration supposed to be editable by the player. 
+
+```cs
+namespace Script {
+    //!!
+    /* Example script */
+    static class Config {
+        // This is a configuration variable
+        public static ConfigVar = 1; 
+    }
+}
+```
 
 ### Automatically updating code in PBs
 

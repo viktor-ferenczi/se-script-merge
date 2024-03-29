@@ -43,7 +43,10 @@
         <Compile Include="CodeCompressor.cs" />
         <Compile Include="CompiledScript.cs" />
         <Compile Include="DebugBlocks.cs" />
+        <Compile Include="Declaration.cs" />
         <Compile Include="MergeExtensions.cs" />
+        <Compile Include="Mappings.cs" />
+        <Compile Include="StringLiteral.cs" />
         <Compile Include="WhitespaceRemover.cs" />
         <Compile Include="NameGenerator.cs" />
         <Compile Include="ProgramClassRemover.cs" />

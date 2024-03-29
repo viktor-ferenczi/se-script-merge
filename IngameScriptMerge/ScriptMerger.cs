@@ -17,8 +17,18 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
         var workspace = MSBuildWorkspace.Create();
         var solution = await workspace.OpenSolutionAsync(solutionPath);
 
-        var nodes = solution.Projects
+        var documents = solution.Projects
             .SelectMany(project => project.Documents)
+            .ToList();
+
+        documents.Sort((a, b) => String.Compare(a.FilePath, b.FilePath, StringComparison.Ordinal));
+
+        var nodes = documents
+            .AsParallel()
+            .AsOrdered()
+#if DEBUG
+            .WithDegreeOfParallelism(1)
+#endif
             .Select(document => document.GetSyntaxTreeAsync().Result)
             .Where(tree => tree != null)
             .SelectMany(tree => tree
@@ -29,8 +39,9 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
                     node.ChildNodes().Any(child =>
                         child.IsKind(SyntaxKind.IdentifierName) &&
                         namespaceNames.Contains(child.TryGetInferredMemberName()))))
-            .SelectMany(ns => ns.ChildNodes().Skip(1))
             .ToList();
+
+        nodes.Sort(CompareNamespaceDeclarations);
 
         var compiledScript = new CompiledScript(nodes);
         var root = await compiledScript.SyntaxTree.GetRootAsync();
@@ -44,34 +55,59 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
 
         nodes = root
             .ChildNodes()
+            .AsParallel()
+            .AsOrdered()
+#if DEBUG
+            .WithDegreeOfParallelism(1)
+#endif
+            .Select(ns => minifyWhitespace ? new WhitespaceRemover().Process(ns) : ns)
+            .SelectMany(ns => ns.ChildNodes().Skip(1))
             .SkipWhile(child => child.IsKind(SyntaxKind.UsingDirective))
             .ToList();
+        nodes.DebugDump("minified");
 
-        nodes = nodes.SelectMany(new ProgramClassRemover().Process).ToList();
+        nodes = nodes
+            .SelectMany(new ProgramClassRemover().Process)
+            .Where(node => node != null)
+            .ToList();
         root.DebugDump("unpacked");
 
-        if (minifyWhitespace)
-        {
-            nodes = nodes.Select(new WhitespaceRemover().Process).ToList();
-            root.DebugDump("minified");
-        }
+        var script = string.Join("\n", nodes
+            .AsParallel()
+            .AsOrdered()
+#if DEBUG
+            .WithDegreeOfParallelism(1)
+#endif
+            .Select(node => PostprocessCodeBlock(node.ToFullString())));
 
-        var scriptLines = new List<string>();
-        foreach (var node in nodes.Where(node => node != null))
-        {
-            var iterLines = node
-                .ToFullString()
-                .Replace("\r\n", "\n")
-                .IterSplit('\n')
-                .FilterLines(releaseMode);
-
-            scriptLines.AddRange(
-                minifyWhitespace
-                    ? iterLines.TrimAndRemoveEmptyLines()
-                    : iterLines.ToList().RemoveCommonIndentation());
-        }
-
-        var script = string.Join("\n", scriptLines);
         return script;
+    }
+
+    private static string PostprocessCodeBlock(string text)
+    {
+        return string.Join("\n", text
+            .Replace("\r\n", "\n")
+            .IterSplit('\n')
+            .Where(line => line.Trim() != "//!!")
+            .ToList()
+            .RemoveCommonIndentation());
+    }
+
+    private static int CompareNamespaceDeclarations(SyntaxNode a, SyntaxNode b)
+    {
+        if (!a.IsKind(SyntaxKind.NamespaceDeclaration) ||
+            !b.IsKind(SyntaxKind.NamespaceDeclaration))
+        {
+            return 0;
+        }
+
+        var ae = a.IsExcludedNamespace();
+        var be = b.IsExcludedNamespace();
+        if (ae != be)
+        {
+            return ae ? -1 : 1;
+        }
+
+        return 0;
     }
 }

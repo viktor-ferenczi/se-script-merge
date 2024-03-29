@@ -18,6 +18,12 @@ public static class MergeExtensions
         }
     }
 
+    public static bool IsExcludedNamespace(this SyntaxNode node)
+    {
+        return node.IsKind(SyntaxKind.NamespaceDeclaration) &&
+               node.ToFullString().Contains("//!!");
+    }
+
     public static int MeasureIndentation(this string line) => line.Length - line.TrimStart().Length;
 
     public static IEnumerable<string> IterSplit(this string text, char separator)

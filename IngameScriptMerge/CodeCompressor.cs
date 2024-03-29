@@ -1,334 +1,37 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace IngameScriptMerge;
 
-record StringLiteral(SyntaxNode Node, string Shortened = null, int Count = 0)
-{
-    public readonly SyntaxNode Node = Node;
-    public readonly string Shortened = Shortened;
-    public int Count = Count;
-
-    public bool ShouldShorten(string text)
-    {
-        // const string x=;
-        return 17 + text.Length + Count < (2 + text.Length) * Count;
-    }
-
-    public override string ToString() => $"{Shortened} [{Count}]";
-}
-
 public class CodeCompressor : CSharpSyntaxRewriter
 {
     private readonly SemanticModel semanticModel;
-    private readonly SyntaxNode root;
-    private readonly string fullText;
-
-    private readonly Dictionary<string, string> nameMapping = new Dictionary<string, string>();
-    private readonly Dictionary<SyntaxNode, string> nodeMapping = new Dictionary<SyntaxNode, string>();
-    private readonly Dictionary<ISymbol, string> symbolMapping = new Dictionary<ISymbol, string>(SymbolEqualityComparer.Default);
-
-    private readonly Dictionary<string, StringLiteral> literals = new Dictionary<string, StringLiteral>();
+    private readonly Mappings mappings;
     private bool literalsDefined;
 
     #region "Collecting declarations"
 
-    private record Declaration(SyntaxNode Node, ISymbol Symbol)
-    {
-        public readonly ISymbol Symbol = Symbol;
-        public readonly SyntaxNode Node = Node;
-    }
-
     public CodeCompressor(CompiledScript compiledScript, bool aggressiveCompression) : base(true)
     {
         semanticModel = compiledScript.SemanticModel;
-        root = compiledScript.SyntaxTree.GetRoot();
-        fullText = root.ToFullString();
 
-        var nameGenerator = CreateNameGenerator();
+        var root = compiledScript.SyntaxTree.GetRoot();
+        var fullText = root.ToFullString();
 
-        BuildMapping(nameGenerator);
-
-        if (aggressiveCompression)
-        {
-            CollectLiterals(nameGenerator);
-        }
-
-        nameMapping.DebugDump("nameMapping");
-    }
-
-    private NameGenerator CreateNameGenerator()
-    {
         var forbidden = fullText.ToHashSet();
         forbidden.DebugDump("forbidden");
 
         var nameGenerator = new NameGenerator(forbidden);
-        return nameGenerator;
-    }
 
-    private void CollectLiterals(NameGenerator nameGenerator)
-    {
-        var iterLiterals = root
-            .DescendantNodes()
-            .AsParallel()
-#if DEBUG
-            .WithDegreeOfParallelism(1)
-#endif
-            .AsUnordered()
-            .Where(symbol => symbol.IsKind(SyntaxKind.StringLiteralExpression));
+        mappings = new Mappings(root, semanticModel, fullText, nameGenerator, aggressiveCompression);
 
-        var d = new Dictionary<string, StringLiteral>();
-        foreach (var node in iterLiterals)
-        {
-            var text = node.GetText().ToString();
-            if (text.Length < 3)
-            {
-                continue;
-            }
+        mappings.Visit(root);
+        mappings.FinalizeLiterals();
 
-            if (!d.TryGetValue(text, out var literal))
-            {
-                d[text] = literal = new StringLiteral(node);
-            }
-
-            literal.Count++;
-        }
-
-        foreach (var (text, literal) in d)
-        {
-            if (literal.ShouldShorten(text))
-            {
-                var shortened = nameGenerator.Next();
-                if (shortened == null)
-                {
-                    break;
-                }
-                literals[text] = new StringLiteral(literal.Node, shortened, literal.Count);
-            }
-        }
-
-        literals.DebugDump("literals");
-    }
-
-    private void BuildMapping(NameGenerator nameGenerator)
-    {
-        var iterDeclarations = root
-            .DescendantNodes()
-            .AsParallel()
-#if DEBUG
-            .WithDegreeOfParallelism(1)
-#endif
-            .AsUnordered()
-            .Select(GetRelevantSymbol)
-            .Where(symbol => symbol != null);
-
-        var excluded = IterExcludedNames().ToHashSet();
-        excluded.DebugDump("excluded");
-
-        foreach (var declaration in iterDeclarations)
-        {
-            var name = declaration.Symbol.GetNameToShorten();
-            if (name == null || name.Length < 2 || excluded.Contains(name))
-            {
-                continue;
-            }
-
-            var shortenedName = nameMapping
-                .TryGetValue(name, out var existingMappedName)
-                ? existingMappedName
-                : nameGenerator.Next();
-
-            if (shortenedName == null)
-            {
-                break;
-            }
-
-            nameMapping[name] = shortenedName;
-            nodeMapping[declaration.Node] = shortenedName;
-            symbolMapping[declaration.Symbol] = shortenedName;
-        }
-    }
-
-    private Declaration GetRelevantSymbol(SyntaxNode node)
-    {
-        var symbol = semanticModel.GetDeclaredSymbol(node);
-        if (symbol == null)
-        {
-            return null;
-        }
-
-        Declaration declaration = null;
-        switch (node.Kind())
-        {
-            case SyntaxKind.InterfaceDeclaration:
-            case SyntaxKind.ClassDeclaration:
-            case SyntaxKind.StructDeclaration:
-            case SyntaxKind.EnumDeclaration:
-            case SyntaxKind.TypeParameter:
-                if (symbol.Name != "Program" &&
-                    symbol.ContainingNamespace.Name.Length == 0)
-                {
-                    declaration = new Declaration(node, symbol);
-                }
-                break;
-
-            case SyntaxKind.ConstructorDeclaration:
-            case SyntaxKind.DestructorDeclaration:
-                if (symbol.ContainingType.Name != "Program")
-                {
-                    declaration = new Declaration(node, symbol);
-                }
-                break;
-
-            case SyntaxKind.MethodDeclaration:
-                if (IsValidMethod((MethodDeclarationSyntax) node, (IMethodSymbol) symbol, out var actualMethodSymbol))
-                {
-                    declaration = new Declaration(node, actualMethodSymbol);
-                }
-                break;
-
-            case SyntaxKind.PropertyDeclaration:
-                if (IsValidProperty((PropertyDeclarationSyntax) node, (IPropertySymbol) symbol, out var actualPropertySymbol))
-                {
-                    declaration = new Declaration(node, actualPropertySymbol);
-                }
-                break;
-
-            case SyntaxKind.FieldDeclaration:
-            case SyntaxKind.EnumMemberDeclaration:
-                if (symbol.ContainingType == null ||
-                    symbol.ContainingType.ContainingAssembly.Name == "Program")
-                {
-                    declaration = new Declaration(node, symbol);
-                }
-                break;
-
-            case SyntaxKind.Parameter:
-            case SyntaxKind.VariableDeclarator:
-            case SyntaxKind.ForEachStatement:
-                declaration = new Declaration(node, symbol);
-                break;
-        }
-
-        if (declaration == null)
-        {
-            return null;
-        }
-
-        if (IsExcludedDeclaration(declaration))
-        {
-            return null;
-        }
-
-        return declaration;
-    }
-
-    private bool IsExcludedDeclaration(Declaration declaration)
-    {
-        var start = declaration.Node.SpanStart;
-        if (start < 0 || start >= fullText.Length)
-        {
-            return false;
-        }
-
-        var newLine = fullText.IndexOf('\n', start);
-        if (newLine <= start)
-        {
-            return false;
-        }
-
-        var line = fullText.Substring(start, newLine - start);
-        if (!line.Contains("//!"))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private bool IsValidMethod(MethodDeclarationSyntax node, IMethodSymbol symbol, out IMethodSymbol actualSymbol)
-    {
-        actualSymbol = symbol;
-
-        var symbolNameSplit = symbol.Name.Split('.');
-        var symbolNameWithoutInterface = symbolNameSplit[symbolNameSplit.Length - 1];
-
-        var explicitInterfaceSpecifier = node.ChildNodes().OfType<ExplicitInterfaceSpecifierSyntax>().FirstOrDefault();
-        if (explicitInterfaceSpecifier != null)
-        {
-            var interfaceName = explicitInterfaceSpecifier.Name.ToString().Split('<')[0];
-            var explicitInterface = symbol.ContainingType.GetImplementedInterface<IMethodSymbol>(interfaceName, true);
-            if (explicitInterface?.ContainingAssembly.Name != "Program")
-            {
-                return false;
-            }
-            actualSymbol = explicitInterface.GetMembers().First(m => m.Name == symbolNameWithoutInterface) as IMethodSymbol;
-        }
-
-        // Do not rename standard program methods
-        if (symbol.ContainingType.Name == "Program" && symbol.Name is "Main" or "Save")
-        {
-            return false;
-        }
-
-        // Implementations of interface methods declared outside the program must not be renamed
-        var baseTypeOrInterface = symbol.ContainingType.GetBaseOrInterfaceDeclaringMember<IMethodSymbol>(symbolNameWithoutInterface, true);
-        if (baseTypeOrInterface != null && baseTypeOrInterface.ContainingAssembly.Name != "Program")
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private bool IsValidProperty(PropertyDeclarationSyntax node, IPropertySymbol symbol, out IPropertySymbol actualSymbol)
-    {
-        actualSymbol = symbol;
-
-        var symbolNameSplit = symbol.Name.Split('.');
-        var symbolNameWithoutInterface = symbolNameSplit[symbolNameSplit.Length - 1];
-
-        var explicitInterfaceSpecifier = node.ChildNodes().OfType<ExplicitInterfaceSpecifierSyntax>().FirstOrDefault();
-        if (explicitInterfaceSpecifier != null)
-        {
-            var interfaceName = explicitInterfaceSpecifier.Name.ToString().Split('<')[0];
-            var explicitInterface = symbol.ContainingType.GetImplementedInterface<IPropertySymbol>(interfaceName, true);
-            if (explicitInterface?.ContainingAssembly.Name != "Program")
-            {
-                return false;
-            }
-            actualSymbol = explicitInterface.GetMembers().First(m => m.Name == symbolNameWithoutInterface) as IPropertySymbol;
-        }
-
-        // Implementations of interface methods declared outside the program must not be renamed
-        var baseTypeOrInterface = symbol.ContainingType.GetBaseOrInterfaceDeclaringMember<IPropertySymbol>(symbolNameWithoutInterface, true);
-        if (baseTypeOrInterface != null && baseTypeOrInterface.ContainingAssembly.Name != "Program")
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private ParallelQuery<string> IterExcludedNames()
-    {
-        return root
-            .ToFullString()
-            .IterSplit('\n')
-            .AsParallel()
-#if DEBUG
-            .WithDegreeOfParallelism(1)
-#endif
-            .Select(line => line.Trim())
-            .Where(line => line.StartsWith("//!"))
-            .SelectMany(line => line
-                .Substring(3)
-                .TrimStart()
-                .Split(',')
-                .Select(name => name.Trim()));
+        mappings.NameMapping.DebugDump("nameMapping");
+        mappings.Literals.DebugDump("literals");
     }
 
     #endregion
@@ -342,7 +45,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -363,7 +66,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -384,7 +87,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -405,7 +108,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -426,7 +129,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -447,7 +150,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -468,7 +171,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -489,7 +192,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -510,7 +213,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -531,7 +234,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -552,7 +255,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -573,7 +276,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return null;
         }
 
-        if (!nodeMapping.TryGetValue(node, out var shortenedName))
+        if (!mappings.NodeMapping.TryGetValue(node, out var shortenedName))
         {
             return visited;
         }
@@ -605,7 +308,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return visited;
         }
 
-        if (!symbolMapping.TryGetValue(symbol, out var shortenedName))
+        if (!mappings.SymbolMapping.TryGetValue(symbol, out var shortenedName))
         {
             return visited;
         }
@@ -658,7 +361,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             symbol = symbol.OriginalDefinition;
         }
 
-        if (!symbolMapping.TryGetValue(symbol, out var shortenedName))
+        if (!mappings.SymbolMapping.TryGetValue(symbol, out var shortenedName))
         {
             return visited;
         }
@@ -704,7 +407,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             symbol = symbol.OriginalDefinition;
         }
 
-        if (!symbolMapping.TryGetValue(symbol, out var shortenedName))
+        if (!mappings.SymbolMapping.TryGetValue(symbol, out var shortenedName))
         {
             return visited;
         }
@@ -730,7 +433,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
         }
 
         var text = node.GetText().ToString();
-        if (!literals.TryGetValue(text, out var literal))
+        if (!mappings.Literals.TryGetValue(text, out var literal))
         {
             return visited;
         }
@@ -740,6 +443,11 @@ public class CodeCompressor : CSharpSyntaxRewriter
 
     public override SyntaxNode Visit(SyntaxNode node)
     {
+        if (node.IsExcludedNamespace())
+        {
+            return node;
+        }
+
         var visited = base.Visit(node);
 
         if (visited is ClassDeclarationSyntax classDeclarationSyntax)
@@ -771,16 +479,20 @@ public class CodeCompressor : CSharpSyntaxRewriter
 
     private ClassDeclarationSyntax AddLiteralStringDefinitions(ClassDeclarationSyntax classDeclarationSyntax)
     {
-        foreach (var (text, literal) in literals)
+        foreach (var (text, literal) in mappings.Literals)
         {
             var literalExpressionSyntax = SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(text.Substring(1, text.Length - 2)));
 
             var fieldDeclaration = SyntaxFactory
-                .FieldDeclaration(
-                    SyntaxFactory.VariableDeclaration(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)))
-                        .AddVariables(SyntaxFactory
-                            .VariableDeclarator(SyntaxFactory.Identifier(literal.Shortened))
-                            .WithInitializer(SyntaxFactory.EqualsValueClause(literalExpressionSyntax))))
+                .FieldDeclaration(SyntaxFactory
+                    .VariableDeclaration(SyntaxFactory
+                        .PredefinedType(SyntaxFactory
+                            .Token(SyntaxKind.StringKeyword)))
+                    .AddVariables(SyntaxFactory
+                        .VariableDeclarator(SyntaxFactory
+                            .Identifier(literal.Shortened))
+                        .WithInitializer(SyntaxFactory
+                            .EqualsValueClause(literalExpressionSyntax))))
                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.ConstKeyword));
 
             classDeclarationSyntax = classDeclarationSyntax.AddMembers(fieldDeclaration);

@@ -14,6 +14,16 @@ public class WhitespaceRemover() : CSharpSyntaxRewriter(true)
         return Visit(node);
     }
 
+    public override SyntaxNode Visit(SyntaxNode node)
+    {
+        if (node.IsExcludedNamespace())
+        {
+            return node;
+        }
+
+        return base.Visit(node);
+    }
+
     public override SyntaxToken VisitToken(SyntaxToken token)
     {
         var visited = base.VisitToken(token).WithoutTrivia();
