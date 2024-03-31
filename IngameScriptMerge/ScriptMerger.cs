@@ -8,11 +8,17 @@ using Microsoft.CodeAnalysis.MSBuild;
 
 namespace IngameScriptMerge;
 
-public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhitespace, bool shortenNames, bool aggressiveCompression, bool releaseMode = false)
+public class MergedScript(string text, List<string> errors)
+{
+    public readonly string Text = text;
+    public readonly List<string> Errors = errors;
+}
+
+public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhitespace = false, bool shortenNames = false, bool aggressiveCompression = false, bool releaseMode = false, string whitelistPath = null, string terminalPath = null)
 {
     private readonly string[] namespaceNames = @namespace.Split(',');
 
-    public async Task<string> Merge()
+    public async Task<MergedScript> Merge()
     {
         var workspace = MSBuildWorkspace.Create();
         var solution = await workspace.OpenSolutionAsync(solutionPath);
@@ -51,7 +57,25 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
         var root = await compiledScript.SyntaxTree.GetRootAsync();
         root.DebugDump("compiled");
 
-        // TODO: Add PB API whitelist check
+        if (whitelistPath != null)
+        {
+            var whitelistValidator = new WhitelistValidator(compiledScript, whitelistPath);
+            whitelistValidator.Visit(root);
+            if (whitelistValidator.Errors.Any())
+            {
+                return new MergedScript(null, whitelistValidator.Errors);
+            }
+        }
+
+        if (terminalPath != null)
+        {
+            var terminalValidator = new TerminalValidator(compiledScript, terminalPath);
+            terminalValidator.Visit(root);
+            if (terminalValidator.Errors.Any())
+            {
+                return new MergedScript(null, terminalValidator.Errors);
+            }
+        }
 
         // Shorten type and variable names in the script based on type information
         if (shortenNames)
@@ -98,7 +122,7 @@ public class ScriptMerger(string solutionPath, string @namespace, bool minifyWhi
                 .Select(node => PostprocessCodeBlock(node.ToFullString())))
         );
 
-        return script;
+        return new MergedScript(script, null);
     }
 
     private string PostprocessCodeBlock(string text)

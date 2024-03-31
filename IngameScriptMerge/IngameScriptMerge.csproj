@@ -47,6 +47,7 @@
         <Compile Include="MergeExtensions.cs" />
         <Compile Include="Mappings.cs" />
         <Compile Include="StringLiteral.cs" />
+        <Compile Include="WhitelistValidator.cs" />
         <Compile Include="WhitespaceRemover.cs" />
         <Compile Include="NameGenerator.cs" />
         <Compile Include="ProgramClassRemover.cs" />

@@ -13,6 +13,9 @@ namespace IngameScriptMergeTool;
 public static class Program
 {
     private const string DefaultScriptNamespace = "Script";
+    private const string defaultWhitelistPath = "whitelist.txt";
+    private const string defaultTerminalPath = "terminal.xml";
+
     private static string defaultSolutionPath;
 
     public static async Task Main(string[] args)
@@ -55,6 +58,16 @@ public static class Program
                 getDefaultValue: () => false,
                 description: "Enables release mode, it removes #ifdef DEBUG ... #endif blocks"
             ),
+            new Option<string>(
+                aliases: ["--whitelist", "-w"],
+                getDefaultValue: () => defaultWhitelistPath,
+                description: "Path of the API whitelist cache file"
+            ),
+            new Option<string>(
+                aliases: ["--terminal", "-t"],
+                getDefaultValue: () => defaultTerminalPath,
+                description: "Path of the Terminal property cache file"
+            ),
         };
 
         rootCommand.Description = "Command line tool to merge a Space Engineers script from multiple source code files.";
@@ -66,7 +79,7 @@ public static class Program
     }
 
     // The name of each handler function parameter must match the long name of their corresponding options
-    private static async Task HandleCommand(string solution, string @namespace, string deploy, bool minify, bool unicode, bool aggressive, bool release)
+    private static async Task HandleCommand(string solution, string @namespace, string deploy, bool minify, bool unicode, bool aggressive, bool release, string whitelist, string terminal)
     {
         solution = Environment.ExpandEnvironmentVariables(solution);
         if (!File.Exists(solution))
@@ -75,9 +88,18 @@ public static class Program
             Environment.Exit(2);
         }
 
-        var mergedScript = await new ScriptMerger(solution, @namespace, minify, unicode, aggressive, release).Merge();
+        var mergedScript = await new ScriptMerger(solution, @namespace, minify, unicode, aggressive, release, whitelist, terminal).Merge();
 
-        DebugWriteScriptSource(solution, mergedScript);
+        if (mergedScript.Errors != null)
+        {
+            foreach (var error in mergedScript.Errors)
+            {
+                await Console.Error.WriteLineAsync(error);
+            }
+            Environment.Exit(-1);
+        }
+
+        DebugWriteScriptSource(solution, mergedScript.Text);
 
         if (string.IsNullOrEmpty(deploy))
         {
@@ -85,7 +107,7 @@ public static class Program
             return;
         }
 
-        SaveScript(deploy, mergedScript);
+        SaveScript(deploy, mergedScript.Text);
     }
 
     private static void SaveScript(string deploy, string mergedCode)

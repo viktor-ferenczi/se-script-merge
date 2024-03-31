@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 		LICENSE = LICENSE
 		.gitignore = .gitignore
+		whitelist.txt = whitelist.txt
+		terminal.xml = terminal.xml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IngameScriptMerge", "IngameScriptMerge\IngameScriptMerge.csproj", "{133DDFD6-9361-4ED7-ACD4-0B90C312647B}"
