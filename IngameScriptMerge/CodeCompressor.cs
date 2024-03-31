@@ -339,8 +339,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
         }
 
         // Must look up the symbol here, since it is NOT a declaration
-        var symbolInfo = semanticModel.GetSymbolInfo(node);
-        var symbol = symbolInfo.Symbol;
+        var symbol = semanticModel.GetSymbolInfo(node).Symbol;
         if (symbol == null)
         {
             var memberGroup = semanticModel.GetMemberGroup(node);
@@ -385,8 +384,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
         }
 
         // Must look up the symbol here, since it is NOT a declaration
-        var symbolInfo = semanticModel.GetSymbolInfo(node);
-        var symbol = symbolInfo.Symbol;
+        var symbol = semanticModel.GetSymbolInfo(node).Symbol;
         if (symbol == null)
         {
             var memberGroup = semanticModel.GetMemberGroup(node);
