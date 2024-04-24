@@ -421,7 +421,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
 
     #endregion
 
-    #region Shortening repeated literals
+    #region Shortening repeated string literals
 
     public override SyntaxNode VisitLiteralExpression(LiteralExpressionSyntax node)
     {
@@ -432,7 +432,7 @@ public class CodeCompressor : CSharpSyntaxRewriter
             return visited;
         }
 
-        var text = node.GetText().ToString();
+        var text = node.GetText().ToString().Trim();
         if (!mappings.Literals.TryGetValue(text, out var literal))
         {
             return visited;
@@ -481,7 +481,8 @@ public class CodeCompressor : CSharpSyntaxRewriter
     {
         foreach (var (text, literal) in mappings.Literals)
         {
-            var literalExpressionSyntax = SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(text.Substring(1, text.Length - 2)));
+            var literalToken = CreateLiteralTokenFromQuotedEscapedText(text);
+            var literalExpressionSyntax = SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, literalToken);
 
             var fieldDeclaration = SyntaxFactory
                 .FieldDeclaration(SyntaxFactory
@@ -498,6 +499,20 @@ public class CodeCompressor : CSharpSyntaxRewriter
             classDeclarationSyntax = classDeclarationSyntax.AddMembers(fieldDeclaration);
         }
         return classDeclarationSyntax;
+    }
+
+    private static SyntaxToken CreateLiteralTokenFromQuotedEscapedText(string text)
+    {
+        // Unquote and unescape
+        var parsedSyntaxTree = CSharpSyntaxTree.ParseText($"var dummy = {text};");
+        var root = parsedSyntaxTree.GetRoot() as CompilationUnitSyntax;
+        var literalExpression = root?.DescendantNodes()
+            .OfType<LiteralExpressionSyntax>()
+            .First();
+
+        var unescapedText = (string) literalExpression?.Token.Value ?? "???";
+        var literalToken = SyntaxFactory.Literal(text, unescapedText);
+        return literalToken;
     }
 
     #endregion

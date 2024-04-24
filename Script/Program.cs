@@ -6,6 +6,7 @@
 // ReSharper disable CheckNamespace
 
 // Import everything available for PB scripts in-game
+
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
@@ -83,7 +84,32 @@ namespace Script
         // ReSharper disable once UnusedMember.Global
         public void Save()
         {
-            // TODO
+            var a00 = "\n";
+            var a01 = "\n";
+            var a02 = "\n";
+            var a03 = "\n";
+            var a04 = "\n";
+            var a05 = "\n";
+            var a06 = "\n";
+            var a07 = "\n";
+            var a08 = "\n";
+            var a09 = "\n";
+            var a10 = "\n";
+            var a11 = "\n";
+            var a12 = "\n";
+            var a13 = "\n";
+            var a14 = "\n";
+            var a15 = "\n";
+            var a16 = "\n";
+            var a17 = "\n";
+            var a18 = "\n";
+            var a19 = "\n";
+
+            var a = new[]
+            {
+                "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n",
+                "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n",
+            };
         }
 
         private Support CustomMethod()

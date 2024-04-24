@@ -57,8 +57,8 @@ public class Mappings : CSharpSyntaxWalker
     {
         if (collectLiterals && node.IsKind(SyntaxKind.StringLiteralExpression))
         {
-            var text = node.GetText().ToString();
-            if (text.Length > 2)
+            var text = node.GetText().ToString().Trim();
+            if (text.StartsWith("\""))
             {
                 if (!Literals.TryGetValue(text, out var literal))
                 {

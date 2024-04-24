@@ -33,145 +33,21 @@ namespace DebugMergedScript
     {
         #region MergedScript
 
-public class ISegment<T>
-{
-    public T Next;
-}
-
-public interface ISupport: IComparable<int>
-{
-    bool IsGood();
-    bool MustImplementThis(bool b);
-    bool Good { get; set; }
-}
-
-//! support
-private static int staticVar;
-
-private int instanceVar;
-
-private Support support;
-
-
-public bool IsFunctional { get; set; } = true;
-
-
-public Program()
-{
-    instanceVar = 2;
-}
-
-
-// ReSharper disable once UnusedMember.Global
-public void Main(string argument, UpdateType updateSource)
-{
-    // TODO
-
-    #region "Do not remove this"
-
-    Echo("REGION 1");
-
-    #endregion
-
-    Echo("DEBUG");
-
-
-    #region "Do not remove that"
-
-    Echo("REGION 2");
-
-    #endregion
-
-    support = CustomMethod();
-
-    var segment = new ISegment<IMyTerminalBlock>
-    {
-        Next = Me,
-    };
-
-    ISegment<IMyTerminalBlock> otherSegment = segment;
-    Echo(otherSegment.Next.CustomName);
-}
-
-
-// ReSharper disable once UnusedMember.Global
-public void Save()
-{
-    // TODO
-}
-
-
-private Support CustomMethod()
-{
-    var localVar = 1;
-    localVar += 2;
-    staticVar++;
-    instanceVar -= staticVar;
-    localVar += instanceVar;
-    Echo(localVar.ToString());
-
-    CustomEnum e = CustomEnum.First;
-    e = CustomEnum.Second;
-
-    return new Support();
-}
-
-
-enum CustomEnum
-{
-    First,
-    Second,
-}
-
-public class Support : ISupport
-{
-    public bool Good { get; set; }
-    public bool IsGood() => Good;
-
-    public Support(bool init = true)
-    {
-        Good = init;
-    }
-
-    public bool MustImplementThis(bool b) => !b;
-
-    public int CompareTo(int other)
-    {
-        return Good ? other : -other;
-    }
-
-    public override string ToString()
-    {
-        return $"Support({Good})";
-    }
-
-    // Finalizers are blacklisted in SE
-    // ~Support()
-    // {
-    //     good = false;
-    // }
-}
-
-public class SupportExplicit : ISupport
-{
-    int IComparable<int>.CompareTo(int other)
-    {
-        return 0;
-    }
-
-    bool ISupport.IsGood()
-    {
-        return false;
-    }
-
-    bool ISupport.MustImplementThis(bool b)
-    {
-        return true;
-    }
-
-    bool ISupport.Good { get; set; }
-}
-
+public class À<T>{public T Á;}
+public interface Â:IComparable<int>{bool Ã();bool Ä(bool b);bool Å{get;set;}}
+private static int Æ;
+private int Ç;
+private ç support;
+public bool È{get;set;}=true;
+public Program(){Ç=2;}
+public void Main(string É,UpdateType Ê){ Echo("REGION 1");
+Echo("REGION 2"); support=â();var Ë=new À<IMyTerminalBlock>{Á=Me,};À<IMyTerminalBlock>Ì=Ë;Echo(Ì.Á.CustomName);}
+public void Save(){var Í=ë;var Î=ë;var Ï=ë;var Ð=ë;var Ñ=ë;var Ò=ë;var Ó=ë;var Ô=ë;var Õ=ë;var Ö=ë;var Ø=ë;var Ù=ë;var Ú=ë;var Û=ë;var Ü=ë;var Ý=ë;var Þ=ë;var ß=ë;var à=ë;var á=ë;var a=new[]{ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,};}
+private ç â(){var ã=1;ã+=2;Æ++;Ç-=Æ;ã+=Ç;Echo(ã.ToString());ä e=ä.å;e=ä.æ;return new ç();}
+const string ë="\n";
+enum ä{å,æ,}
+public class ç:Â{public bool Å{get;set;}public bool Ã()=>Å;public ç(bool è=true){Å=è;}public bool Ä(bool b)=>!b;public int CompareTo(int é){return Å?é:-é;}public override string ToString(){return$"Support({Å})";}}
+public class ê:Â{int IComparable<int>.CompareTo(int é){return 0;}bool Â.Ã(){return false;}bool Â.Ä(bool b){return true;}bool Â.Å{get;set;}}
 
         #endregion
     }
