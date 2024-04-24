@@ -84,28 +84,20 @@ namespace Script
         // ReSharper disable once UnusedMember.Global
         public void Save()
         {
-            var a00 = "\n";
-            var a01 = "\n";
-            var a02 = "\n";
-            var a03 = "\n";
-            var a04 = "\n";
-            var a05 = "\n";
-            var a06 = "\n";
-            var a07 = "\n";
-            var a08 = "\n";
-            var a09 = "\n";
-            var a10 = "\n";
-            var a11 = "\n";
-            var a12 = "\n";
-            var a13 = "\n";
-            var a14 = "\n";
-            var a15 = "\n";
-            var a16 = "\n";
-            var a17 = "\n";
-            var a18 = "\n";
-            var a19 = "\n";
+            var a0 = "\n";
+            var a1 = "\n";
+            var a2 = "\n";
+            var a3 = "\n";
+            var a4 = "\n";
+            var a5 = "\n";
+            var a6 = "\n";
+            var a7 = "\n";
+            var a8 = "\n";
+            var a9 = "\n";
 
-            var a = new[]
+            var s = a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+
+            var _ = new[]
             {
                 "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n",
                 "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n",
@@ -123,6 +115,7 @@ namespace Script
 
             CustomEnum e = CustomEnum.First;
             e = CustomEnum.Second;
+            var _ = e.ToString();
 
             return new Support();
         }

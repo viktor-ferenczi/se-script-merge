@@ -27,6 +27,8 @@ using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
 
 
+#if DEBUG
+
 namespace DebugMergedScript
 {
     class Program : MyGridProgram
@@ -38,3 +40,5 @@ namespace DebugMergedScript
         #endregion
     }
 }
+
+#endif

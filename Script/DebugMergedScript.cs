@@ -27,6 +27,8 @@ using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
 
 
+#if DEBUG
+
 namespace DebugMergedScript
 {
     class Program : MyGridProgram
@@ -37,18 +39,20 @@ public class À<T>{public T Á;}
 public interface Â:IComparable<int>{bool Ã();bool Ä(bool b);bool Å{get;set;}}
 private static int Æ;
 private int Ç;
-private ç support;
+private Ý support;
 public bool È{get;set;}=true;
 public Program(){Ç=2;}
 public void Main(string É,UpdateType Ê){ Echo("REGION 1");
-Echo("REGION 2"); support=â();var Ë=new À<IMyTerminalBlock>{Á=Me,};À<IMyTerminalBlock>Ì=Ë;Echo(Ì.Á.CustomName);}
-public void Save(){var Í=ë;var Î=ë;var Ï=ë;var Ð=ë;var Ñ=ë;var Ò=ë;var Ó=ë;var Ô=ë;var Õ=ë;var Ö=ë;var Ø=ë;var Ù=ë;var Ú=ë;var Û=ë;var Ü=ë;var Ý=ë;var Þ=ë;var ß=ë;var à=ë;var á=ë;var a=new[]{ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,ë,};}
-private ç â(){var ã=1;ã+=2;Æ++;Ç-=Æ;ã+=Ç;Echo(ã.ToString());ä e=ä.å;e=ä.æ;return new ç();}
-const string ë="\n";
-enum ä{å,æ,}
-public class ç:Â{public bool Å{get;set;}public bool Ã()=>Å;public ç(bool è=true){Å=è;}public bool Ä(bool b)=>!b;public int CompareTo(int é){return Å?é:-é;}public override string ToString(){return$"Support({Å})";}}
-public class ê:Â{int IComparable<int>.CompareTo(int é){return 0;}bool Â.Ã(){return false;}bool Â.Ä(bool b){return true;}bool Â.Å{get;set;}}
+Echo("REGION 2"); support=Ø();var Ë=new À<IMyTerminalBlock>{Á=Me,};À<IMyTerminalBlock>Ì=Ë;Echo(Ì.Á.CustomName);}
+public void Save(){var Í=á;var Î=á;var Ï=á;var Ð=á;var Ñ=á;var Ò=á;var Ó=á;var Ô=á;var Õ=á;var Ö=á;var s=Í+Î+Ï+Ð+Ñ+Ò+Ó+Ô+Õ+Ö;var_=new[]{á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,};}
+private Ý Ø(){var Ù=1;Ù+=2;Æ++;Ç-=Æ;Ù+=Ç;Echo(Ù.ToString());Ú e=Ú.Û;e=Ú.Ü;var_=e.ToString();return new Ý();}
+const string á="\n";
+enum Ú{Û,Ü,}
+public class Ý:Â{public bool Å{get;set;}public bool Ã()=>Å;public Ý(bool Þ=true){Å=Þ;}public bool Ä(bool b)=>!b;public int CompareTo(int ß){return Å?ß:-ß;}public override string ToString(){return$"Support({Å})";}}
+public class à:Â{int IComparable<int>.CompareTo(int ß){return 0;}bool Â.Ã(){return false;}bool Â.Ä(bool b){return true;}bool Â.Å{get;set;}}
 
         #endregion
     }
 }
+
+#endif

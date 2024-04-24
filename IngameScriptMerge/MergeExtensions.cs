@@ -148,7 +148,9 @@ public static class MergeExtensions
 #endif
     }
 
+#if DEBUG
     private static int debugSequenceNumber = 1;
+#endif
 
     public static void DebugDump<T>(this IEnumerable<T> data, string name)
     {
