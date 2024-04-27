@@ -4,6 +4,8 @@
 
 It can also minify the script for release, so it can fit under the 100k characters limit. 
 
+Please consider supporting my work on [Patreon](https://www.patreon.com/semods) or one time via [PayPal](https://www.paypal.com/paypalme/vferenczi/).
+
 ## Create a script project
 
 - Install .NET Framework 4.8.1 (if you don't have it)
@@ -127,3 +129,8 @@ This is a simpler tool than MDK and does not depend on Visual Studio. However, i
 the script against the PB API whitelist, currently. It could be implemented based on the same whitelist
 file of MDK, should enough script developers request it. The type information is already available,
 since it is required for proper minification.
+
+## Want to know more?
+
+- [SE Mods Discord](https://discord.gg/PYPFPGf3Ca) FAQ, Troubleshooting, Support, Bug Reports, Discussion
+- [Plugin Loader Discord](https://discord.gg/6ETGRU3CzR) Everything about plugins
