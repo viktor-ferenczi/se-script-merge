@@ -242,6 +242,11 @@ public static class MergeExtensions
 
     public static bool RequiresWhitespace(this char c)
     {
+        if (c == '_')
+        {
+            return true;
+        }
+
         // https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names
         return CharUnicodeInfo.GetUnicodeCategory(c) switch
         {
