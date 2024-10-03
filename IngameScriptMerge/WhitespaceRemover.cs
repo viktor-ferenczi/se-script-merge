@@ -72,7 +72,7 @@ public class WhitespaceRemover() : CSharpSyntaxRewriter(true)
                 case SyntaxKind.IfDirectiveTrivia:
                 case SyntaxKind.ElseDirectiveTrivia:
                 case SyntaxKind.EndIfDirectiveTrivia:
-                    visited = visited.WithTrailingTrivia(visited.LeadingTrivia.Add(trivia));
+                    visited = visited.WithTrailingTrivia(visited.TrailingTrivia.Add(trivia));
                     break;
             }
         }
