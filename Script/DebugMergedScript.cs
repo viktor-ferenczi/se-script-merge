@@ -44,8 +44,8 @@ public bool È{get;set;}=true;
 public Program(){Ç=2;}
 public void Main(string É,UpdateType Ê){ Echo("REGION 1");
 Echo("REGION 2"); support=Ø();var Ë=new À<IMyTerminalBlock>{Á=Me,};À<IMyTerminalBlock>Ì=Ë;Echo(Ì.Á.CustomName);}
-public void Save(){var Í=á;var Î=á;var Ï=á;var Ð=á;var Ñ=á;var Ò=á;var Ó=á;var Ô=á;var Õ=á;var Ö=á;var s=Í+Î+Ï+Ð+Ñ+Ò+Ó+Ô+Õ+Ö;var_=new[]{á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,};}
-private Ý Ø(){var Ù=1;Ù+=2;Æ++;Ç-=Æ;Ù+=Ç;Echo(Ù.ToString());Ú e=Ú.Û;e=Ú.Ü;var_=e.ToString();return new Ý();}
+public void Save(){var Í=á;var Î=á;var Ï=á;var Ð=á;var Ñ=á;var Ò=á;var Ó=á;var Ô=á;var Õ=á;var Ö=á;var s=Í+Î+Ï+Ð+Ñ+Ò+Ó+Ô+Õ+Ö;var _=new[]{á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,á,};}
+private Ý Ø(){var Ù=1;Ù+=2;Æ++;Ç-=Æ;Ù+=Ç;Echo(Ù.ToString());Ú e=Ú.Û;e=Ú.Ü;var _=e.ToString();return new Ý();}
 const string á="\n";
 enum Ú{Û,Ü,}
 public class Ý:Â{public bool Å{get;set;}public bool Ã()=>Å;public Ý(bool Þ=true){Å=Þ;}public bool Ä(bool b)=>!b;public int CompareTo(int ß){return Å?ß:-ß;}public override string ToString(){return$"Support({Å})";}}
